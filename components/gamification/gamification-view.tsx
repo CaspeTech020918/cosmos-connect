@@ -1,11 +1,11 @@
 "use client"
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import ChallengesTab from "./challenges-tab"
-import QuizzesTab from "./quizzes-tab"
-import LeaderboardTab from "./leaderboard-tab"
-import BadgesTab from "./badges-tab"
-import MiniGamesTab from "./mini-games-tab"
+import {ChallengesTab} from "./challenges-tab"
+import {QuizzesTab} from "./quizzes-tab"
+import {LeaderboardTab} from "./leaderboard-tab"
+import {BadgesTab} from "./badges-tab"
+import {MiniGamesTab} from "./mini-games-tab"
 import { Target, Brain, Trophy, Award, Gamepad2 } from "lucide-react"
 
 export default function GamificationView() {
