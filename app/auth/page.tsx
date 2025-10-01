@@ -7,6 +7,13 @@ import { RegisterForm } from "@/components/auth/register-form"
 import { ForgotPasswordForm } from "@/components/auth/forgot-password-form"
 import { useAuth } from "@/lib/auth-context"
 import { CaptainCosmo } from "@/components/ui/captain-cosmo"
+import { createClient } from "@supabase/supabase-js"
+
+// Supabase client
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 export default function AuthPage() {
   const [mode, setMode] = useState<"login" | "register" | "forgot">("login")
@@ -23,6 +30,20 @@ export default function AuthPage() {
     return null // Will redirect
   }
 
+  // 🚀 Google Sign-In handler
+  const handleGoogleSignIn = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo:
+          process.env.NODE_ENV === "development"
+            ? "http://localhost:3000/dashboard"
+            : "https://cosmos-connect.vercel.app/dashboard",
+      },
+    })
+    if (error) console.error("Google Sign-In Error:", error.message)
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
       {/* Cosmic background effects */}
@@ -37,12 +58,23 @@ export default function AuthPage() {
       </div>
 
       {/* Auth form */}
-      <div className="relative z-10">
+      <div className="relative z-10 flex flex-col items-center space-y-4">
         {mode === "login" && (
-          <LoginForm onToggleMode={() => setMode("register")} onForgotPassword={() => setMode("forgot")} />
+          <LoginForm
+            onToggleMode={() => setMode("register")}
+            onForgotPassword={() => setMode("forgot")}
+          />
         )}
         {mode === "register" && <RegisterForm onToggleMode={() => setMode("login")} />}
         {mode === "forgot" && <ForgotPasswordForm onBack={() => setMode("login")} />}
+
+        {/* 🚀 Google Sign-In Button */}
+        <button
+          onClick={handleGoogleSignIn}
+          className="px-6 py-3 mt-4 bg-red-500 rounded-lg hover:bg-red-600 text-white"
+        >
+          Sign in with Google
+        </button>
       </div>
 
       {/* Cosmic particles */}
