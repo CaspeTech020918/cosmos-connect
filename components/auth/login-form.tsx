@@ -1,38 +1,54 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useAuth } from "@/lib/auth-context"
-import { Loader2 } from "lucide-react"
-import { useRouter } from "next/navigation"
+import type React from "react";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/lib/auth-context";
+import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient"; // ✅ add this import
 
 interface LoginFormProps {
-  onToggleMode: () => void
-  onForgotPassword: () => void
+  onToggleMode: () => void;
+  onForgotPassword: () => void;
 }
 
 export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
-  const { login, loading } = useAuth()
-  const router = useRouter()
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const { login, loading } = useAuth();
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
+    e.preventDefault();
+    setError("");
 
-    const result = await login(email, password)
+    const result = await login(email, password);
     if (!result.success) {
-      setError(result.message || "Login failed")
+      setError(result.message || "Login failed");
     } else {
-      router.push("/dashboard")
+      router.push("/dashboard");
     }
-  }
+  };
+
+  // ✅ Google Login handler
+  const handleGoogleLogin = async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`, // important
+      },
+    });
+
+    if (error) {
+      console.error("Google login error:", error.message);
+      setError("Google login failed, try again.");
+    }
+  };
 
   return (
     <Card className="w-full max-w-md bg-gradient-to-br from-slate-900/90 to-slate-800/90 border-cyan-500/20 backdrop-blur-sm">
@@ -43,11 +59,10 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
         <CardDescription className="text-slate-300">Enter the cosmic realm</CardDescription>
       </CardHeader>
       <CardContent>
+        {/* Email + Password Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-slate-200">
-              Email
-            </Label>
+            <Label htmlFor="email" className="text-slate-200">Email</Label>
             <Input
               id="email"
               type="email"
@@ -59,9 +74,7 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password" className="text-slate-200">
-              Password
-            </Label>
+            <Label htmlFor="password" className="text-slate-200">Password</Label>
             <Input
               id="password"
               type="password"
@@ -98,6 +111,17 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
             )}
           </Button>
         </form>
+
+        {/* ✅ Google Login Button */}
+        <div className="mt-4">
+          <Button
+            onClick={handleGoogleLogin}
+            className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold"
+          >
+            Sign in with Google
+          </Button>
+        </div>
+
         <div className="mt-6 text-center">
           <p className="text-slate-400 text-sm">
             New to the cosmos?{" "}
@@ -108,5 +132,5 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
