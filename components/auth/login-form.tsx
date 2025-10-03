@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAuth } from "@/lib/auth-context";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient"; // ✅ add this import
+import { supabase } from "@/lib/supabaseClient"; // ✅ correct import
 
 interface LoginFormProps {
   onToggleMode: () => void;
@@ -23,6 +23,7 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
   const { login, loading } = useAuth();
   const router = useRouter();
 
+  // ✅ Email+Password handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -37,10 +38,10 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
 
   // ✅ Google Login handler
   const handleGoogleLogin = async () => {
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`, // important
+        redirectTo: `${window.location.origin}/auth/callback`, // must match Google console + Supabase redirect
       },
     });
 
@@ -62,7 +63,9 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
         {/* Email + Password Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-slate-200">Email</Label>
+            <Label htmlFor="email" className="text-slate-200">
+              Email
+            </Label>
             <Input
               id="email"
               type="email"
@@ -74,7 +77,9 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password" className="text-slate-200">Password</Label>
+            <Label htmlFor="password" className="text-slate-200">
+              Password
+            </Label>
             <Input
               id="password"
               type="password"
@@ -87,13 +92,19 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
           </div>
 
           <div className="text-right">
-            <button type="button" onClick={onForgotPassword} className="text-sm text-cyan-400 hover:text-cyan-300">
+            <button
+              type="button"
+              onClick={onForgotPassword}
+              className="text-sm text-cyan-400 hover:text-cyan-300"
+            >
               Forgot password?
             </button>
           </div>
 
           {error && (
-            <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg p-3">{error}</div>
+            <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+              {error}
+            </div>
           )}
 
           <Button
@@ -115,6 +126,7 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
         {/* ✅ Google Login Button */}
         <div className="mt-4">
           <Button
+            type="button"
             onClick={handleGoogleLogin}
             className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold"
           >
@@ -125,7 +137,10 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
         <div className="mt-6 text-center">
           <p className="text-slate-400 text-sm">
             New to the cosmos?{" "}
-            <button onClick={onToggleMode} className="text-cyan-400 hover:text-cyan-300 font-medium">
+            <button
+              onClick={onToggleMode}
+              className="text-cyan-400 hover:text-cyan-300 font-medium"
+            >
               Create Account
             </button>
           </p>
