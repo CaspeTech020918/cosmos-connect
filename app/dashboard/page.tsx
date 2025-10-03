@@ -9,7 +9,7 @@ import { ProfileView } from "@/components/profile/profile-view"
 import { ChatView } from "@/components/chat/chat-view"
 import { CommunitiesView } from "@/components/communities/communities-view"
 import { AIAssistantView } from "@/components/ai/ai-assistant-view"
-import { GamificationView } from "@/components/gamification/gamification-view"
+import  GamificationView  from "@/components/gamification/gamification-view"
 import { Loader2 } from "lucide-react"
 import { CaptainCosmo } from "@/components/ui/captain-cosmo"
 
