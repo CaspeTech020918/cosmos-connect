@@ -10,27 +10,23 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const handleAuth = async () => {
       try {
-        // Exchange URL hash (with access_token) for a session
-        const { data, error } = await supabase.auth.getSession();
+        // Supabase exchange code → session
+        const { data, error } = await supabase.auth.exchangeCodeForSession(
+          window.location.href
+        );
 
         if (error) {
-          console.error("Supabase getSession error:", error);
+          console.error("Supabase exchangeCodeForSession error:", error);
           router.replace("/auth");
           return;
         }
 
-        // Listen for session from OAuth redirect
-        supabase.auth.onAuthStateChange((_event, session) => {
-          if (session) {
-            router.replace("/dashboard");
-          } else {
-            router.replace("/auth");
-          }
-        });
-
-        // If session already available
         if (data?.session) {
+          // ✅ Successfully signed in, redirect to dashboard
           router.replace("/dashboard");
+        } else {
+          // ❌ No session → back to login
+          router.replace("/auth");
         }
       } catch (err) {
         console.error("Auth callback error:", err);
