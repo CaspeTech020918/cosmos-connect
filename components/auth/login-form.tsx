@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAuth } from "@/lib/auth-context";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient"; // ✅ correct import
+import { supabase } from "@/lib/supabaseClient";
 
 interface LoginFormProps {
   onToggleMode: () => void;
@@ -23,7 +23,7 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
   const { login, loading } = useAuth();
   const router = useRouter();
 
-  // ✅ Email+Password handler
+  // Email + Password handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -41,7 +41,7 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`, // must match Google console + Supabase redirect
+        redirectTo: `${window.location.origin}/auth/callback`, // matches Google + Supabase site URL
       },
     });
 
