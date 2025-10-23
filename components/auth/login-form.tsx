@@ -5,7 +5,13 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { useAuth } from "@/lib/auth-context";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -23,7 +29,7 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
   const { login, loading } = useAuth();
   const router = useRouter();
 
-  // Email + Password handler
+  // ✅ Email + Password login handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -41,7 +47,7 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`, // matches Google + Supabase site URL
+        redirectTo: `${window.location.origin}/auth/callback`, // must match Google + Supabase
       },
     });
 
@@ -57,7 +63,9 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
         <CardTitle className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
           Welcome Back
         </CardTitle>
-        <CardDescription className="text-slate-300">Enter the cosmic realm</CardDescription>
+        <CardDescription className="text-slate-300">
+          Enter the cosmic realm
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {/* Email + Password Form */}
