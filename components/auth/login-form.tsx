@@ -42,18 +42,28 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
     }
   };
 
-  // ✅ Google Login handler
+  // ✅ Google Login handler (handles redirect logic safely)
   const handleGoogleLogin = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`, // must match Google + Supabase
-      },
-    });
+    try {
+      const redirectUrl = `${window.location.origin}/auth/callback`;
+      console.log("🔗 Redirecting to:", redirectUrl);
 
-    if (error) {
-      console.error("Google login error:", error.message);
-      setError("Google login failed, try again.");
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: redirectUrl,
+        },
+      });
+
+      if (error) {
+        console.error("Google login error:", error.message);
+        setError("Google login failed, please try again.");
+      } else {
+        console.log("✅ Google login flow started:", data);
+      }
+    } catch (err: any) {
+      console.error("Unexpected Google login error:", err.message);
+      setError("Unexpected error during Google login.");
     }
   };
 
@@ -67,6 +77,7 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
           Enter the cosmic realm
         </CardDescription>
       </CardHeader>
+
       <CardContent>
         {/* Email + Password Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -84,6 +95,7 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
               required
             />
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="password" className="text-slate-200">
               Password
