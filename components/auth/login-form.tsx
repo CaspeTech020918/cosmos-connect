@@ -43,29 +43,29 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
   };
 
   // ✅ Google Login handler (handles redirect logic safely)
-  const handleGoogleLogin = async () => {
-    try {
-      const redirectUrl = `${window.location.origin}/auth/callback`;
-      console.log("🔗 Redirecting to:", redirectUrl);
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: redirectUrl,
+ const handleGoogleLogin = async () => {
+  try {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`, // Force correct redirect
+        queryParams: {
+          access_type: "offline",
+          prompt: "consent",
         },
-      });
+      },
+    });
 
-      if (error) {
-        console.error("Google login error:", error.message);
-        setError("Google login failed, please try again.");
-      } else {
-        console.log("✅ Google login flow started:", data);
-      }
-    } catch (err: any) {
-      console.error("Unexpected Google login error:", err.message);
-      setError("Unexpected error during Google login.");
+    if (error) {
+      console.error("Google login error:", error.message);
+      setError("Google login failed, try again.");
     }
-  };
+  } catch (err: any) {
+    console.error("Unexpected login error:", err.message);
+    setError("Something went wrong.");
+  }
+};
+
 
   return (
     <Card className="w-full max-w-md bg-gradient-to-br from-slate-900/90 to-slate-800/90 border-cyan-500/20 backdrop-blur-sm">
