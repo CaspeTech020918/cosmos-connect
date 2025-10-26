@@ -42,17 +42,19 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
     }
   };
 
-  // ✅ Google Login handler (handles redirect logic safely)
- const handleGoogleLogin = async () => {
+  // ✅ Google Login handler (final fix)
+const handleGoogleLogin = async () => {
   try {
+    const redirectURL =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      `${window.location.origin}/auth/callback`;
+
+    console.log("Redirecting to:", redirectURL);
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`, // Force correct redirect
-        queryParams: {
-          access_type: "offline",
-          prompt: "consent",
-        },
+        redirectTo: redirectURL,
       },
     });
 
@@ -60,9 +62,9 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
       console.error("Google login error:", error.message);
       setError("Google login failed, try again.");
     }
-  } catch (err: any) {
-    console.error("Unexpected login error:", err.message);
-    setError("Something went wrong.");
+  } catch (err) {
+    console.error("Unexpected Google login error:", err);
+    setError("Something went wrong. Please try again.");
   }
 };
 
