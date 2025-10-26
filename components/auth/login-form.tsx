@@ -29,7 +29,7 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
   const { login, loading } = useAuth();
   const router = useRouter();
 
-  // ✅ Email + Password login handler
+  // ✅ Email + Password login
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -42,32 +42,34 @@ export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
     }
   };
 
-  // ✅ Google Login handler (final fix)
-const handleGoogleLogin = async () => {
-  try {
-    const redirectURL =
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      `${window.location.origin}/auth/callback`;
+  // ✅ Google Login handler (Hardcoded redirect URL)
+  const handleGoogleLogin = async () => {
+    try {
+      // 👇 Hardcoded redirect URL (your deployed app)
+      const redirectURL = "https://cosmos-connect.vercel.app/auth/callback";
 
-    console.log("Redirecting to:", redirectURL);
+      console.log("🔁 Redirecting Google OAuth to:", redirectURL);
 
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: redirectURL,
-      },
-    });
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: redirectURL,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
+        },
+      });
 
-    if (error) {
-      console.error("Google login error:", error.message);
-      setError("Google login failed, try again.");
+      if (error) {
+        console.error("❌ Google login error:", error.message);
+        setError("Google login failed. Try again.");
+      }
+    } catch (err) {
+      console.error("Unexpected Google login error:", err);
+      setError("Something went wrong. Please try again.");
     }
-  } catch (err) {
-    console.error("Unexpected Google login error:", err);
-    setError("Something went wrong. Please try again.");
-  }
-};
-
+  };
 
   return (
     <Card className="w-full max-w-md bg-gradient-to-br from-slate-900/90 to-slate-800/90 border-cyan-500/20 backdrop-blur-sm">
@@ -145,7 +147,7 @@ const handleGoogleLogin = async () => {
           </Button>
         </form>
 
-        {/* ✅ Google Login Button */}
+        {/* ✅ Google Login Button with hardcoded redirect */}
         <div className="mt-4">
           <Button
             type="button"
