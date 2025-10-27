@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic"; // ✅ Prevents 404 during static builds
+
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -10,66 +12,70 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const handleAuth = async () => {
       try {
-        // ✅ 1. First, parse the access token from hash (#access_token=)
+        console.log("🔄 Checking for Supabase session or tokens...");
+
+        // 👇 Parse the hash fragment from the URL (Supabase OAuth redirect)
         const hash = window.location.hash;
         if (hash) {
           const params = new URLSearchParams(hash.substring(1));
           const accessToken = params.get("access_token");
-          const refreshToken = params.get("refresh_token") || "";
+          const refreshToken = params.get("refresh_token");
 
           if (accessToken) {
-            console.log("✅ Access token found, setting Supabase session...");
+            console.log("✅ Access token found — setting Supabase session...");
 
+            // Restore Supabase session manually
             const { error } = await supabase.auth.setSession({
               access_token: accessToken,
-              refresh_token: refreshToken,
+              refresh_token: refreshToken || "",
             });
 
             if (error) {
-              console.error("Error setting session:", error);
+              console.error("❌ Error setting session:", error.message);
               router.replace("/auth");
               return;
             }
 
-            console.log("🚀 Session set successfully, redirecting to dashboard...");
+            console.log("🚀 Session set successfully — redirecting to dashboard...");
             router.replace("/dashboard");
             return;
           }
         }
 
-        // ✅ 2. If user refreshes or no hash found, check for existing session
+        // 👇 If no token found in URL, check Supabase for existing session
         const { data, error } = await supabase.auth.getSession();
 
         if (error) {
-          console.error("Supabase session error:", error);
+          console.error("⚠️ Supabase getSession error:", error.message);
           router.replace("/auth");
           return;
         }
 
+        // 👇 Listen for auth state change (just in case token loads late)
+        supabase.auth.onAuthStateChange((_event, session) => {
+          if (session) {
+            console.log("✅ Session active — redirecting to dashboard...");
+            router.replace("/dashboard");
+          } else {
+            router.replace("/auth");
+          }
+        });
+
+        // 👇 If a session already exists
         if (data?.session) {
-          console.log("🔁 Existing session found, redirecting...");
+          console.log("🔓 Existing session found — redirecting...");
           router.replace("/dashboard");
         } else {
+          console.log("⚠️ No session found — returning to auth page...");
           router.replace("/auth");
         }
       } catch (err) {
-        console.error("❌ Auth callback error:", err);
+        console.error("🔥 Auth callback error:", err);
         router.replace("/auth");
       }
     };
 
     handleAuth();
-
-    // ✅ 3. Bonus: Automatically redirect again if user refreshes the callback page
-    const interval = setInterval(async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data?.session) {
-        console.log("✅ Auto-redirect on refresh");
-        router.replace("/dashboard");
-      }
-    }, 2500);
-
-    return () => clearInterval(interval);
   }, [router]);
 
   return (
