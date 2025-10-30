@@ -1,167 +1,93 @@
-"use client"
+// lib/auth-context.tsx
+"use client";
 
-import type React from "react"
-import { createContext, useContext, useState, useEffect } from "react"
-import { supabase } from "@/lib/supabaseClient"  // ✅ FIXED
-import type { User } from "@supabase/supabase-js"
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { supabase } from "./supabaseClient";
+import type { User } from "@supabase/supabase-js";
 
-interface Profile {
-  id: string
-  username: string
-  full_name: string
-  avatar_url: string | null
-  bio: string | null
-  cosmic_level: number
-  neon_points: number
-  created_at: string
-  updated_at: string
-}
+type AuthContextType = {
+  user: User | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  signup: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  sendMagicLink: (email: string) => Promise<{ success: boolean; message?: string }>;
+  logout: () => Promise<void>;
+};
 
-interface AuthContextType {
-  user: User | null
-  profile: Profile | null
-  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>
-  register: (
-    email: string,
-    password: string,
-    username: string,
-    fullName: string,
-  ) => Promise<{ success: boolean; message?: string }>
-  logout: () => Promise<void>
-  loading: boolean
-  sendPasswordReset: (email: string) => Promise<boolean>
-}
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
-
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [loading, setLoading] = useState(true)
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const getInitialSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
+    let mounted = true;
+    const init = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!mounted) return;
+      setUser(data?.session?.user ?? null);
+      setLoading(false);
+    };
+    init();
 
-      if (session?.user) {
-        await fetchProfile(session.user.id)
-      }
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
 
-      setLoading(false)
-    }
-
-    getInitialSession()
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setUser(session?.user ?? null)
-
-      if (session?.user) {
-        await fetchProfile(session.user.id)
-      } else {
-        setProfile(null)
-      }
-
-      setLoading(false)
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
-
-  const fetchProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single()
-
-      if (error) {
-        console.error("Error fetching profile:", error)
-        return
-      }
-
-      setProfile(data)
-    } catch (error) {
-      console.error("Error fetching profile:", error)
-    }
-  }
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
 
   const login = async (email: string, password: string) => {
-    setLoading(true)
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) {
-        setLoading(false)
-        return { success: false, message: error.message }
-      }
-      setLoading(false)
-      return { success: true }
-    } catch (error) {
-      setLoading(false)
-      return { success: false, message: "An unexpected error occurred" }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, message: err?.message ?? "Login failed" };
     }
-  }
+  };
 
-  const register = async (email: string, password: string, username: string, fullName: string) => {
-    setLoading(true)
+  const signup = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signUp({
+      // signUp returns user if allowed. For magic link use signUp with emailRedirectTo or signInWithOtp
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (error) throw error;
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, message: err?.message ?? "Signup failed" };
+    }
+  };
+
+  const sendMagicLink = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
         email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,  // ✅ FIXED
-          data: {
-            username,
-            full_name: fullName,
-            avatar_url: "/futuristic-avatar-neon-blue.jpg",
-            bio: "New cosmic traveler exploring the digital universe",
-          },
-        },
-      })
-      if (error) {
-        setLoading(false)
-        return { success: false, message: error.message }
-      }
-      setLoading(false)
-      return { success: true, message: "Check your email to confirm your account!" }
-    } catch (error) {
-      setLoading(false)
-      return { success: false, message: "An unexpected error occurred" }
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (error) throw error;
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, message: err?.message ?? "Failed to send magic link" };
     }
-  }
-
-  const sendPasswordReset = async (email: string): Promise<boolean> => {
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`, // ✅ confirm reset route
-      })
-      if (error) {
-        console.error("Password reset error:", error)
-        return false
-      }
-      return true
-    } catch (error) {
-      console.error("Password reset error:", error)
-      return false
-    }
-  }
+  };
 
   const logout = async () => {
-    await supabase.auth.signOut()
-  }
+    await supabase.auth.signOut();
+    setUser(null);
+  };
 
   return (
-    <AuthContext.Provider value={{ user, profile, login, register, logout, loading, sendPasswordReset }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, sendMagicLink, logout }}>
       {children}
     </AuthContext.Provider>
-  )
-}
+  );
+};
 
-export function useAuth() {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider")
-  }
-  return context
-}
+export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
+};
