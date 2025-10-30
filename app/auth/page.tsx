@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { LoginForm } from "@/components/auth/login-form";
+import LoginForm from "@/components/auth/login-form";
 import { RegisterForm } from "@/components/auth/register-form";
 import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
 import { useAuth } from "@/lib/auth-context";
