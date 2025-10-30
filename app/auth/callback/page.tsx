@@ -1,6 +1,5 @@
+// app/auth/callback/page.tsx
 "use client";
-
-export const dynamic = "force-dynamic"; // ✅ Prevents 404 during static builds
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -10,77 +9,58 @@ export default function AuthCallbackPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const handleAuth = async () => {
+    const handle = async () => {
       try {
-        console.log("🔄 Checking for Supabase session or tokens...");
-
-        // 👇 Parse the hash fragment from the URL (Supabase OAuth redirect)
-        const hash = window.location.hash;
+        const hash = typeof window !== "undefined" ? window.location.hash : "";
         if (hash) {
           const params = new URLSearchParams(hash.substring(1));
           const accessToken = params.get("access_token");
-          const refreshToken = params.get("refresh_token");
+          const refreshToken = params.get("refresh_token") || params.get("provider_refresh_token") || "";
 
           if (accessToken) {
-            console.log("✅ Access token found — setting Supabase session...");
-
-            // Restore Supabase session manually
-            const { error } = await supabase.auth.setSession({
+            // Try setting the session
+            const { error: setErr } = await supabase.auth.setSession({
               access_token: accessToken,
-              refresh_token: refreshToken || "",
-            });
+              refresh_token: refreshToken,
+            } as any);
 
-            if (error) {
-              console.error("❌ Error setting session:", error.message);
+            if (setErr) {
+              console.error("setSession error:", setErr);
               router.replace("/auth");
               return;
             }
 
-            console.log("🚀 Session set successfully — redirecting to dashboard...");
+            // remove hash from URL
+            history.replaceState({}, document.title, window.location.pathname);
             router.replace("/dashboard");
             return;
           }
         }
 
-        // 👇 If no token found in URL, check Supabase for existing session
+        // If no hash, check session
         const { data, error } = await supabase.auth.getSession();
-
         if (error) {
-          console.error("⚠️ Supabase getSession error:", error.message);
+          console.error("getSession error:", error);
           router.replace("/auth");
           return;
         }
-
-        // 👇 Listen for auth state change (just in case token loads late)
-        supabase.auth.onAuthStateChange((_event, session) => {
-          if (session) {
-            console.log("✅ Session active — redirecting to dashboard...");
-            router.replace("/dashboard");
-          } else {
-            router.replace("/auth");
-          }
-        });
-
-        // 👇 If a session already exists
         if (data?.session) {
-          console.log("🔓 Existing session found — redirecting...");
           router.replace("/dashboard");
         } else {
-          console.log("⚠️ No session found — returning to auth page...");
           router.replace("/auth");
         }
       } catch (err) {
-        console.error("🔥 Auth callback error:", err);
+        console.error("Auth callback exception:", err);
         router.replace("/auth");
       }
     };
 
-    handleAuth();
+    handle();
   }, [router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center text-white text-lg">
-      🚀 Connecting to the Cosmos… please wait.
+      🚀 Completing sign-in… Connecting you to Cosmos…
     </div>
   );
 }
