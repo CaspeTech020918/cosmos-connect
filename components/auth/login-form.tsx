@@ -1,173 +1,102 @@
+// components/auth/login-form.tsx
 "use client";
 
-import type React from "react";
-import { useState } from "react";
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { useAuth } from "@/lib/auth-context";
-import { Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
-interface LoginFormProps {
-  onToggleMode: () => void;
-  onForgotPassword: () => void;
+interface Props {
+  onToggleMode?: () => void;
+  onForgotPassword?: () => void;
 }
 
-export function LoginForm({ onToggleMode, onForgotPassword }: LoginFormProps) {
+export default function LoginForm({ onToggleMode, onForgotPassword }: Props) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const { login, loading } = useAuth();
   const router = useRouter();
 
-  // ✅ Email + Password login
+  // Email + Password
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-
-    const result = await login(email, password);
-    if (!result.success) {
-      setError(result.message || "Login failed");
-    } else {
-      router.push("/dashboard");
+    const res = await login(email, password);
+    if (!res.success) {
+      setError(res.message || "Login failed");
+      return;
     }
+    // success -> redirect
+    router.push("/dashboard");
   };
 
-  // ✅ Google Login handler (Hardcoded redirect URL)
+  // Google OAuth (implicit): redirectTo should point to your callback
   const handleGoogleLogin = async () => {
+    setError("");
     try {
-      // 👇 Hardcoded redirect URL (your deployed app)
-      const redirectURL = "https://cosmos-connect.vercel.app/auth/callback";
-
-      console.log("🔁 Redirecting Google OAuth to:", redirectURL);
-
+      const redirectTo = `${window.location.origin}/auth/callback`;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: redirectURL,
-          queryParams: {
-            access_type: "offline",
-            prompt: "consent",
-          },
+          redirectTo,
+          queryParams: { access_type: "offline", prompt: "consent" },
         },
       });
-
-      if (error) {
-        console.error("❌ Google login error:", error.message);
-        setError("Google login failed. Try again.");
-      }
-    } catch (err) {
-      console.error("Unexpected Google login error:", err);
-      setError("Something went wrong. Please try again.");
+      if (error) throw error;
+      // user will be redirected away to Google
+    } catch (err: any) {
+      console.error("Google login error:", err);
+      setError(err?.message || "Google login failed");
     }
   };
 
   return (
-    <Card className="w-full max-w-md bg-gradient-to-br from-slate-900/90 to-slate-800/90 border-cyan-500/20 backdrop-blur-sm">
+    <Card className="w-full max-w-md bg-slate-900/90 border-cyan-500/20 p-6">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-          Welcome Back
-        </CardTitle>
-        <CardDescription className="text-slate-300">
-          Enter the cosmic realm
-        </CardDescription>
+        <CardTitle className="text-2xl">Welcome Back</CardTitle>
+        <CardDescription>Enter the cosmic realm</CardDescription>
       </CardHeader>
-
       <CardContent>
-        {/* Email + Password Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email" className="text-slate-200">
-              Email
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-400 focus:border-cyan-400"
-              placeholder="Enter your cosmic email"
-              required
-            />
+          <div>
+            <Label htmlFor="email">Email</Label>
+            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          </div>
+          <div>
+            <Label htmlFor="password">Password</Label>
+            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password" className="text-slate-200">
-              Password
-            </Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-400 focus:border-cyan-400"
-              placeholder="Enter your password"
-              required
-            />
-          </div>
+          {error && <div className="text-sm text-red-400">{error}</div>}
 
-          <div className="text-right">
-            <button
-              type="button"
-              onClick={onForgotPassword}
-              className="text-sm text-cyan-400 hover:text-cyan-300"
-            >
-              Forgot password?
-            </button>
-          </div>
-
-          {error && (
-            <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-              {error}
-            </div>
-          )}
-
-          <Button
-            type="submit"
-            className="w-full bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 text-white font-semibold"
-            disabled={loading}
-          >
+          <Button type="submit" disabled={loading} className="w-full">
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Entering Cosmos...
+                Signing in...
               </>
             ) : (
-              "Enter Cosmos"
+              "Sign in"
             )}
           </Button>
         </form>
 
-        {/* ✅ Google Login Button with hardcoded redirect */}
         <div className="mt-4">
-          <Button
-            type="button"
-            onClick={handleGoogleLogin}
-            className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold"
-          >
+          <Button type="button" onClick={handleGoogleLogin} className="w-full">
             Sign in with Google
           </Button>
         </div>
 
-        <div className="mt-6 text-center">
-          <p className="text-slate-400 text-sm">
-            New to the cosmos?{" "}
-            <button
-              onClick={onToggleMode}
-              className="text-cyan-400 hover:text-cyan-300 font-medium"
-            >
-              Create Account
-            </button>
-          </p>
+        <div className="mt-4 text-center">
+          <button onClick={onToggleMode} className="text-cyan-400">
+            Create account
+          </button>
         </div>
       </CardContent>
     </Card>
