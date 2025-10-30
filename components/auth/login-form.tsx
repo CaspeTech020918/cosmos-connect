@@ -1,104 +1,91 @@
-// components/auth/login-form.tsx
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
-import { useAuth } from "@/lib/auth-context";
+import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
-interface Props {
-  onToggleMode?: () => void;
-  onForgotPassword?: () => void;
-}
-
-export default function LoginForm({ onToggleMode, onForgotPassword }: Props) {
+export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const { login, loading } = useAuth();
-  const router = useRouter();
+  const [message, setMessage] = useState("");
 
-  // Email + Password
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    const res = await login(email, password);
-    if (!res.success) {
-      setError(res.message || "Login failed");
-      return;
-    }
-    // success -> redirect
-    router.push("/dashboard");
+    setMessage("Sending magic link...");
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: "https://cosmos-connect.vercel.app/auth/callback",
+      },
+    });
+    if (error) setMessage("Error: " + error.message);
+    else setMessage("Magic link sent! Check your inbox ✉️");
   };
 
-  // Google OAuth (implicit): redirectTo should point to your callback
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: "https://cosmos-connect.vercel.app/auth/callback",
+      },
+    });
+    if (error) setMessage("Error: " + error.message);
+    else setMessage("Signup successful! Check your email for confirmation.");
+  };
+
   const handleGoogleLogin = async () => {
-    setError("");
-    try {
-      const redirectTo = `${window.location.origin}/auth/callback`;
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo,
-          queryParams: { access_type: "offline", prompt: "consent" },
-        },
-      });
-      if (error) throw error;
-      // user will be redirected away to Google
-    } catch (err: any) {
-      console.error("Google login error:", err);
-      setError(err?.message || "Google login failed");
-    }
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: "https://cosmos-connect.vercel.app/auth/callback",
+      },
+    });
+    if (error) setMessage("Error: " + error.message);
   };
 
   return (
-    <Card className="w-full max-w-md bg-slate-900/90 border-cyan-500/20 p-6">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl">Welcome Back</CardTitle>
-        <CardDescription>Enter the cosmic realm</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          </div>
-          <div>
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-          </div>
+    <div className="flex flex-col items-center justify-center min-h-screen text-white bg-black">
+      <h1 className="text-3xl mb-4 font-bold">🚀 Welcome to Cosmos Connect</h1>
+      <form onSubmit={handleEmailLogin} className="w-full max-w-sm">
+        <input
+          type="email"
+          placeholder="Enter your email"
+          className="w-full p-2 rounded-md text-black"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <button
+          type="submit"
+          className="w-full bg-purple-600 mt-3 py-2 rounded-md hover:bg-purple-700"
+        >
+          Send Magic Link
+        </button>
 
-          {error && <div className="text-sm text-red-400">{error}</div>}
+        <button
+          onClick={handleSignUp}
+          className="w-full mt-3 bg-blue-600 py-2 rounded-md hover:bg-blue-700"
+        >
+          Create New Account
+        </button>
+      </form>
 
-          <Button type="submit" disabled={loading} className="w-full">
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Signing in...
-              </>
-            ) : (
-              "Sign in"
-            )}
-          </Button>
-        </form>
+      <div className="mt-6">
+        <button
+          onClick={handleGoogleLogin}
+          className="bg-white text-black px-4 py-2 rounded-md flex items-center gap-2 hover:bg-gray-200"
+        >
+          <img
+            src="https://www.svgrepo.com/show/475656/google-color.svg"
+            alt="Google"
+            className="w-5 h-5"
+          />
+          Sign in with Google
+        </button>
+      </div>
 
-        <div className="mt-4">
-          <Button type="button" onClick={handleGoogleLogin} className="w-full">
-            Sign in with Google
-          </Button>
-        </div>
-
-        <div className="mt-4 text-center">
-          <button onClick={onToggleMode} className="text-cyan-400">
-            Create account
-          </button>
-        </div>
-      </CardContent>
-    </Card>
+      {message && <p className="mt-4 text-gray-400">{message}</p>}
+    </div>
   );
 }
