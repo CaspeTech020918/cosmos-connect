@@ -1,4 +1,3 @@
-// app/auth/callback/page.tsx
 "use client";
 
 import { useEffect } from "react";
@@ -9,58 +8,58 @@ export default function AuthCallbackPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const handle = async () => {
+    const handleAuth = async () => {
       try {
-        const hash = typeof window !== "undefined" ? window.location.hash : "";
+        // Parse the access token from URL hash
+        const hash = window.location.hash;
         if (hash) {
           const params = new URLSearchParams(hash.substring(1));
           const accessToken = params.get("access_token");
-          const refreshToken = params.get("refresh_token") || params.get("provider_refresh_token") || "";
+          const refreshToken = params.get("refresh_token");
 
           if (accessToken) {
-            // Try setting the session
-            const { error: setErr } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken,
-            } as any);
+            console.log("✅ Access token found, setting Supabase session...");
 
-            if (setErr) {
-              console.error("setSession error:", setErr);
+            // Set session manually in Supabase
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || "",
+            });
+
+            if (error) {
+              console.error("Error setting session:", error.message);
               router.replace("/auth");
               return;
             }
 
-            // remove hash from URL
-            history.replaceState({}, document.title, window.location.pathname);
+            console.log("✅ Session set successfully — redirecting to dashboard");
             router.replace("/dashboard");
             return;
           }
         }
 
-        // If no hash, check session
+        // If no token in URL, check existing session
         const { data, error } = await supabase.auth.getSession();
-        if (error) {
-          console.error("getSession error:", error);
+
+        if (error || !data.session) {
+          console.error("❌ No session found or error:", error?.message);
           router.replace("/auth");
-          return;
-        }
-        if (data?.session) {
-          router.replace("/dashboard");
         } else {
-          router.replace("/auth");
+          console.log("✅ Existing session found — redirecting to dashboard");
+          router.replace("/dashboard");
         }
       } catch (err) {
-        console.error("Auth callback exception:", err);
+        console.error("Auth callback error:", err);
         router.replace("/auth");
       }
     };
 
-    handle();
+    handleAuth();
   }, [router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center text-white text-lg">
-      🚀 Completing sign-in… Connecting you to Cosmos…
+    <div className="min-h-screen flex items-center justify-center text-white text-lg bg-black">
+      🚀 Connecting to the Cosmos... please wait.
     </div>
   );
 }
