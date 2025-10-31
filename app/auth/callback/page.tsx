@@ -10,46 +10,61 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const handleAuth = async () => {
       try {
-        // Parse the access token from URL hash
+        const url = new URL(window.location.href);
         const hash = window.location.hash;
+        const code = url.searchParams.get("code");
+
+        // ✅ 1. If we got a ?code= from OAuth, exchange it for a session
+        if (code) {
+          console.log("🔄 Exchanging OAuth code for session...");
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (!error) {
+            console.log("✅ Code exchanged successfully! Redirecting...");
+            router.replace("/dashboard");
+            return;
+          } else {
+            console.error("❌ Error exchanging code:", error.message);
+            router.replace("/auth");
+            return;
+          }
+        }
+
+        // ✅ 2. Handle hash fragment (#access_token)
         if (hash) {
           const params = new URLSearchParams(hash.substring(1));
           const accessToken = params.get("access_token");
           const refreshToken = params.get("refresh_token");
 
           if (accessToken) {
-            console.log("✅ Access token found, setting Supabase session...");
-
-            // Set session manually in Supabase
+            console.log("🔑 Access token found — setting Supabase session...");
             const { error } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken || "",
             });
 
-            if (error) {
-              console.error("Error setting session:", error.message);
+            if (!error) {
+              console.log("✅ Session set successfully — redirecting...");
+              router.replace("/dashboard");
+              return;
+            } else {
+              console.error("❌ Error setting session:", error.message);
               router.replace("/auth");
               return;
             }
-
-            console.log("✅ Session set successfully — redirecting to dashboard");
-            router.replace("/dashboard");
-            return;
           }
         }
 
-        // If no token in URL, check existing session
+        // ✅ 3. No tokens? Try existing session
         const { data, error } = await supabase.auth.getSession();
-
-        if (error || !data.session) {
-          console.error("❌ No session found or error:", error?.message);
-          router.replace("/auth");
-        } else {
-          console.log("✅ Existing session found — redirecting to dashboard");
+        if (data?.session) {
+          console.log("🪄 Existing session found — redirecting...");
           router.replace("/dashboard");
+        } else {
+          console.warn("⚠️ No session found — redirecting to login...");
+          router.replace("/auth");
         }
       } catch (err) {
-        console.error("Auth callback error:", err);
+        console.error("🚨 Auth callback error:", err);
         router.replace("/auth");
       }
     };
@@ -58,7 +73,7 @@ export default function AuthCallbackPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center text-white text-lg bg-black">
+    <div className="min-h-screen flex items-center justify-center text-white bg-black text-lg">
       🚀 Connecting to the Cosmos... please wait.
     </div>
   );
