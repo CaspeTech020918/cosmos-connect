@@ -1,6 +1,7 @@
+// app/auth/callback/page.tsx
 "use client";
 
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -8,73 +9,68 @@ export default function AuthCallbackPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const handleAuth = async () => {
+    const handleAuthCallback = async () => {
       try {
-        const url = new URL(window.location.href);
-        const hash = window.location.hash;
-        const code = url.searchParams.get("code");
-
-        // ✅ 1. If we got a ?code= from OAuth, exchange it for a session
-        if (code) {
-          console.log("🔄 Exchanging OAuth code for session...");
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (!error) {
-            console.log("✅ Code exchanged successfully! Redirecting...");
-            router.replace("/dashboard");
-            return;
-          } else {
-            console.error("❌ Error exchanging code:", error.message);
-            router.replace("/auth");
-            return;
-          }
-        }
-
-        // ✅ 2. Handle hash fragment (#access_token)
+        // If provider used implicit flow, the tokens come in URL hash
+        const hash = typeof window !== "undefined" ? window.location.hash : "";
         if (hash) {
           const params = new URLSearchParams(hash.substring(1));
-          const accessToken = params.get("access_token");
-          const refreshToken = params.get("refresh_token");
+          const access_token = params.get("access_token");
+          const refresh_token = params.get("refresh_token");
 
-          if (accessToken) {
-            console.log("🔑 Access token found — setting Supabase session...");
-            const { error } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken || "",
+          if (access_token) {
+            // Manually set Supabase session (implicit flow)
+            const { data, error } = await supabase.auth.setSession({
+              access_token,
+              refresh_token: refresh_token || undefined,
             });
-
-            if (!error) {
-              console.log("✅ Session set successfully — redirecting...");
-              router.replace("/dashboard");
-              return;
-            } else {
-              console.error("❌ Error setting session:", error.message);
+            if (error) {
+              console.error("Failed to set session from callback hash:", error);
               router.replace("/auth");
               return;
             }
+            // Clean the URL (remove tokens from address bar)
+            history.replaceState(null, "", window.location.pathname + window.location.search);
+            router.replace("/dashboard");
+            return;
           }
         }
 
-        // ✅ 3. No tokens? Try existing session
+        // If we got a code (PKCE) flow possibility - try server exchange approach (optional)
+        // Otherwise check current session:
         const { data, error } = await supabase.auth.getSession();
-        if (data?.session) {
-          console.log("🪄 Existing session found — redirecting...");
-          router.replace("/dashboard");
-        } else {
-          console.warn("⚠️ No session found — redirecting to login...");
+        if (error) {
+          console.error("Error reading session:", error);
           router.replace("/auth");
+          return;
         }
+        if (data?.session) {
+          router.replace("/dashboard");
+          return;
+        }
+
+        // subscribe to auth changes as fallback (client)
+        const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+          if (session) router.replace("/dashboard");
+          else router.replace("/auth");
+        });
+
+        // cleanup
+        return () => {
+          sub?.subscription?.unsubscribe?.();
+        };
       } catch (err) {
-        console.error("🚨 Auth callback error:", err);
+        console.error("Auth callback error:", err);
         router.replace("/auth");
       }
     };
 
-    handleAuth();
+    handleAuthCallback();
   }, [router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center text-white bg-black text-lg">
-      🚀 Connecting to the Cosmos... please wait.
+    <div className="min-h-screen flex items-center justify-center text-white text-lg">
+      🚀 Completing sign-in… connecting to the Cosmos. Please wait.
     </div>
   );
 }
